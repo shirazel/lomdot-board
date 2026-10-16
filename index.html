@@ -118,6 +118,13 @@ textarea { min-height: 110px; resize: vertical; }
   .head .lm-btn, .dlg-actions .lm-btn { width: 100%; text-align: center; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.steps { margin: 20px 0; padding: 0 22px 0 0; font-size: 18px; max-width: 700px; }
+.steps li { margin-bottom: 8px; }
+.card { background: var(--lm-white); border-radius: var(--lm-radius); box-shadow: var(--lm-shadow); padding: 24px; max-width: 700px; }
+#cLink { direction: ltr; text-align: left; font-size: 15px; }
+#cResult { margin-top: 20px; }
+#cResult .tools { margin: 12px 0 0; }
+.card form, .card { }
 </style>
 </head>
 <body>
@@ -133,11 +140,39 @@ textarea { min-height: 110px; resize: vertical; }
 
 <main class="wrap">
 
-  <section id="noBoard" hidden>
-    <h1>צריך קישור ללוח</h1>
-    <p class="msg">כדי להיכנס ללוח צריך את הקישור המלא שנשלח אליכם. בקשו אותו ממי שהזמינה אתכם.</p>
+  <!-- בלי חיבור: יצירת קישור ללוח -->
+  <section id="connectView" hidden>
+    <h1>יוצרים קישור ללוח שלכם</h1>
+    <p class="msg">הלוח נשמר בגיליון גוגל שלכם. אחרי ההכנה, הדביקו כאן את כתובת הפריסה וקבלו קישור ללוח, כזה שאפשר לשלוח לכולם.</p>
+    <ol class="steps">
+      <li>פתחו את גיליון התבנית ובחרו <strong>קובץ &gt; יצירת עותק</strong>.</li>
+      <li>בעותק: <strong>הרחבות &gt; Apps Script</strong>, בחרו בפונקציה <strong>setup</strong> ולחצו <strong>הפעלה</strong>. אשרו הרשאות.</li>
+      <li><strong>פריסה &gt; פריסה חדשה &gt; אפליקציית אינטרנט</strong>. הפעלה בתור: אני. גישה: כל אחד.</li>
+      <li>העתיקו את הכתובת שנגמרת ב-<span dir="ltr">/exec</span> והדביקו כאן.</li>
+    </ol>
+    <form id="connectForm" class="card" novalidate autocomplete="off">
+      <div class="f">
+        <label for="cUrl">כתובת הפריסה <small>(נגמרת ב-/exec)</small></label>
+        <input type="text" id="cUrl" dir="ltr" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+      <div class="f">
+        <label for="cTitle">שם הלוח <small>(אופציונלי)</small></label>
+        <input type="text" id="cTitle" maxlength="40" placeholder="למשל: כיתה ג">
+      </div>
+      <p class="err" id="cErr" role="alert"></p>
+      <button class="lm-btn" type="submit">יצירת קישור</button>
+      <div id="cResult" hidden>
+        <p class="status">הקישור ללוח שלכם:</p>
+        <input type="text" id="cLink" dir="ltr" readonly>
+        <div class="tools">
+          <button class="lm-btn lm-btn--ghost" id="cCopy" type="button">העתקת הקישור</button>
+          <a class="lm-btn lm-btn--ghost" id="cOpen" href="#" target="_blank" rel="noopener">פתיחת הלוח</a>
+        </div>
+      </div>
+    </form>
   </section>
 
+  <!-- לוח -->
   <section id="boardView" hidden>
     <div class="head">
       <h1 id="boardTitle"></h1>
@@ -209,12 +244,17 @@ textarea { min-height: 110px; resize: vertical; }
 </dialog>
 
 <script>
-/* ===== הגדרות ===== */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzt3KL8K8pD8dxyxY7pzyCspgsKheg0BULwyHE_PT_YADyqazEUPPk-0Q3JTgyl8t5r/exec';
+/* ===== הגדרות =====
+   הדף עובד לכל גיליון: הכתובת קובעת לאיזה גיליון הוא מתחבר.
+   קישור ללוח נראה כך:  ?s=מזהה-הפריסה&t=שם-הלוח */
 const AUTO_APPROVE = false;          // חייב להתאים ל-Code.gs
 const CATEGORIES = ['רעיון', 'פוסטר', 'שאלה', 'טיפ', 'אחר'];   // חייב להתאים ל-Code.gs
-const BOARD = (new URLSearchParams(location.search).get('board') || '').trim().slice(0, 30);
 const LIMITS = { maxDim: 1200, maxBytes: 1400000 };
+const params = new URLSearchParams(location.search);
+const SID = (params.get('s') || '').trim();
+const TITLE = (params.get('t') || '').trim().slice(0, 40) || 'הלוח שלנו';
+const VALID_SID = /^[A-Za-z0-9_-]{20,200}$/.test(SID);
+const SCRIPT_URL = VALID_SID ? 'https://script.google.com/macros/s/' + SID + '/exec' : '';
 
 const $ = id => document.getElementById(id);
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -227,18 +267,23 @@ function safeImg(u) {
 }
 function store(k, v) { try { if (v === undefined) return localStorage.getItem(k) || ''; localStorage.setItem(k, v); } catch (e) { return ''; } }
 
-/* קריאה מהגיליון (JSONP) */
-function jsonp(params) {
-  return new Promise((resolve, reject) => {
-    const cb = 'lmcb' + Date.now() + Math.floor(Math.random() * 1000);
-    const s = document.createElement('script');
-    const timer = setTimeout(() => { done(); reject(new Error('timeout')); }, 20000);
-    function done() { clearTimeout(timer); delete window[cb]; s.remove(); }
-    window[cb] = data => { done(); data && data.ok ? resolve(data) : reject(new Error('bad')); };
-    s.onerror = () => { done(); reject(new Error('net')); };
-    const q = Object.entries(Object.assign({ callback: cb, t: Date.now() }, params)).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
-    s.src = SCRIPT_URL + '?' + q;
-    document.body.appendChild(s);
+/* ===== יצירת קישור ללוח ===== */
+function showConnect() {
+  $('connectView').hidden = false;
+  $('connectForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const err = $('cErr'); err.textContent = ''; $('cResult').hidden = true;
+    const url = $('cUrl').value.trim();
+    if (/\/dev(\?|$)/.test(url)) { err.textContent = 'זו כתובת בדיקה (/dev). צריך את הכתובת שנגמרת ב-/exec מתוך "פריסה חדשה".'; return; }
+    const m = /\/macros\/s\/([A-Za-z0-9_-]{20,200})\/exec/.exec(url);
+    if (!m) { err.textContent = 'לא זיהינו כתובת פריסה. היא צריכה להתחיל ב-https://script.google.com/macros/s/ ולהסתיים ב-/exec.'; return; }
+    const t = $('cTitle').value.trim().slice(0, 40);
+    const link = location.origin + location.pathname + '?s=' + m[1] + (t ? '&t=' + encodeURIComponent(t) : '');
+    $('cLink').value = link; $('cOpen').href = link; $('cResult').hidden = false;
+  });
+  $('cCopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('cLink').value); $('cCopy').textContent = 'הועתק'; }
+    catch (x) { $('cLink').select(); }
   });
 }
 
@@ -279,19 +324,17 @@ function renderBoard() {
 }
 async function showBoard() {
   $('boardView').hidden = false;
-  $('boardTitle').textContent = BOARD; $('brandName').textContent = BOARD; document.title = BOARD + ' | לומדות';
+  $('boardTitle').textContent = TITLE; $('brandName').textContent = TITLE; document.title = TITLE + ' | לומדות';
   renderFilters();
   const b = $('board'); b.textContent = ''; b.className = 'skeleton';
   for (let i = 0; i < 6; i++) b.appendChild(document.createElement('div'));
   $('status').textContent = 'טוענים את הלוח...';
   try {
-    const data = await jsonp({ board: BOARD });
-    if (data.exists === false) {
-      b.textContent = ''; b.className = '';
-      b.appendChild(el('p', 'empty', 'הלוח לא קיים או נסגר.'));
-      $('status').textContent = ''; $('openAdd').hidden = true; $('copyLink').hidden = true; $('filters').hidden = true; return;
-    }
-    posts = data.posts || []; renderBoard();
+    const r = await fetch(SCRIPT_URL + '?t=' + Date.now());
+    const data = await r.json();
+    if (!data || !data.ok) throw new Error('bad');
+    posts = (data.posts || []).filter(p => p && typeof p.title === 'string');
+    renderBoard();
   } catch (x) { posts = []; renderBoard(); $('status').textContent = 'לא הצלחנו לטעון את הלוח. נסו לרענן את הדף.'; }
 }
 
@@ -346,7 +389,7 @@ form.addEventListener('submit', async e => {
   try {
     // no-cors: הדפדפן לא מאפשר לקרוא את התשובה, לכן הכרטיסייה מוצגת מיד
     await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ title, text, name, category: entry.category, board: BOARD, imageBase64: imageData, consent: true, website: '' }) });
+      body: JSON.stringify({ title, text, name, category: entry.category, imageBase64: imageData, consent: true, website: '' }) });
     store('lm_name', name);
     local.unshift(entry); dlg.close(); renderBoard();
     $('status').textContent = AUTO_APPROVE ? 'הכרטיסייה נשלחה ונשמרה בלוח.' : 'הכרטיסייה נשלחה. היא תוצג לכולן ולכולם אחרי אישור.';
@@ -360,7 +403,7 @@ $('copyLink').addEventListener('click', async () => {
 
 /* ===== הפעלה ===== */
 CATEGORIES.forEach(c => { const o = document.createElement('option'); o.value = o.textContent = c; $('fCat').appendChild(o); });
-BOARD ? showBoard() : ($('noBoard').hidden = false);
+VALID_SID ? showBoard() : showConnect();
 </script>
 </body>
 </html>
