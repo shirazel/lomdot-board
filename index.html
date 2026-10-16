@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>לוח שיתופי | לומדות</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&display=swap');
+
+:root {
+  --lm-blue: #0181C9; --lm-blue-deep: #0B4F7C; --lm-yellow: #E5E633;
+  --lm-teal: #6BE3D1; --lm-teal-soft: #E6FAF6; --lm-orange: #FA7548;
+  --lm-ink: #303030; --lm-body: #4A4A4A; --lm-muted: #6B6B6B; --lm-border: #DDE7E8; --lm-white: #FFFFFF;
+  --lm-font: 'Assistant', 'Heebo', sans-serif;
+  --lm-radius: 6px; --lm-radius-lg: 14px;
+  --lm-shadow: 0 2px 10px rgba(48,48,48,.10); --lm-shadow-hover: 0 8px 24px rgba(48,48,48,.16);
+  --lm-max: 1100px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { direction: rtl; }
+body { margin: 0; font-family: var(--lm-font); font-size: 18px; line-height: 1.7; color: var(--lm-body); background: var(--lm-teal); min-height: 100vh; text-align: right; }
+h1, h2, h3 { color: var(--lm-ink); font-weight: 800; line-height: 1.25; margin: 0; }
+h1 { font-size: clamp(30px, 4.5vw, 44px); }
+h3 { font-size: 22px; font-weight: 700; }
+a { color: var(--lm-blue-deep); text-underline-offset: 3px; }
+.wrap { max-width: var(--lm-max); margin: 0 auto; padding: 0 24px; }
+
+.lm-btn { display: inline-block; background: var(--lm-orange); color: var(--lm-ink); font: 800 19px/1 var(--lm-font); padding: 16px 30px; border: 0; border-radius: var(--lm-radius); cursor: pointer; transition: background .2s, transform .2s; text-decoration: none; }
+.lm-btn:hover { background: #FF8A5F; transform: translateY(-1px); }
+.lm-btn--ghost { background: var(--lm-white); color: var(--lm-blue-deep); border: 2px solid var(--lm-blue-deep); padding: 10px 20px; font-size: 16px; }
+.lm-btn--ghost:hover { background: var(--lm-blue-deep); color: #fff; }
+.lm-btn:focus-visible, .chip:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .x:focus-visible, .tile:focus-visible, .linkbtn:focus-visible { outline: 3px solid var(--lm-blue-deep); outline-offset: 3px; }
+.lm-btn[disabled] { opacity: .6; cursor: wait; }
+.lm-tag { display: inline-block; background: var(--lm-teal-soft); color: var(--lm-blue-deep); font-weight: 700; font-size: 14px; padding: 4px 12px; border-radius: 999px; }
+
+/* סרגל עליון */
+.top { background: var(--lm-white); padding: 12px 0; box-shadow: var(--lm-shadow); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.top img { height: 46px; width: auto; display: block; }
+.top a.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; font-weight: 800; color: var(--lm-ink); font-size: 20px; }
+
+main { padding: 36px 0 64px; }
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.crumb { display: inline-block; font-weight: 700; margin-bottom: 6px; color: var(--lm-blue-deep); }
+
+/* מסך בית: אריחי לוחות */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+.tile { display: flex; flex-direction: column; justify-content: space-between; min-height: 170px; background: var(--lm-white); border-radius: var(--lm-radius); box-shadow: var(--lm-shadow); border-top: 8px solid var(--lm-blue); padding: 20px 22px; text-decoration: none; color: inherit; transition: box-shadow .2s, transform .2s; }
+.tile:hover { box-shadow: var(--lm-shadow-hover); transform: translateY(-3px); }
+.tile[data-c="1"] { border-top-color: var(--lm-yellow); }
+.tile[data-c="2"] { border-top-color: var(--lm-orange); }
+.tile[data-c="3"] { border-top-color: var(--lm-blue-deep); }
+.tile h3 { margin: 0 0 4px; overflow-wrap: anywhere; }
+.tile .count { color: var(--lm-muted); font-size: 16px; }
+.tile .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; }
+.tile .open { font-weight: 800; color: var(--lm-blue-deep); }
+.linkbtn { background: none; border: 0; font: 700 15px var(--lm-font); color: var(--lm-blue-deep); text-decoration: underline; cursor: pointer; padding: 4px; }
+.tile.add { background: transparent; border: 3px dashed var(--lm-blue-deep); box-shadow: none; align-items: center; justify-content: center; text-align: center; cursor: pointer; font: 800 20px var(--lm-font); color: var(--lm-blue-deep); }
+.tile.add:hover { background: #ffffff66; }
+
+/* מסך לוח */
+.tools { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.chip { font: 700 16px/1 var(--lm-font); background: var(--lm-white); color: var(--lm-blue-deep); border: 2px solid var(--lm-blue-deep); border-radius: 999px; padding: 10px 18px; cursor: pointer; transition: background .15s, color .15s; }
+.chip:hover { background: var(--lm-teal-soft); }
+.chip[aria-pressed="true"] { background: var(--lm-blue-deep); color: #fff; }
+.status { margin: 0 0 16px; font-size: 16px; color: var(--lm-ink); font-weight: 600; min-height: 1.4em; }
+.masonry { column-width: 280px; column-gap: 20px; }
+.note { break-inside: avoid; background: var(--lm-white); border-radius: var(--lm-radius); box-shadow: var(--lm-shadow); margin: 0 0 20px; overflow: hidden; transition: box-shadow .2s, transform .2s; border-top: 6px solid var(--lm-blue); }
+.note:hover { box-shadow: var(--lm-shadow-hover); transform: translateY(-2px); }
+.note[data-c="1"] { border-top-color: var(--lm-yellow); }
+.note[data-c="2"] { border-top-color: var(--lm-orange); }
+.note[data-c="3"] { border-top-color: var(--lm-teal); }
+.note[data-c="4"] { border-top-color: var(--lm-blue-deep); }
+.note.pending { outline: 2px dashed var(--lm-blue-deep); outline-offset: -2px; }
+.note .img { display: block; width: 100%; background: var(--lm-teal-soft); cursor: zoom-in; border: 0; padding: 0; }
+.note .img img { display: block; width: 100%; height: auto; }
+.note .body { padding: 18px 20px 20px; }
+.note h3 { margin: 10px 0 6px; font-size: 21px; }
+.note p { margin: 0 0 12px; font-size: 17px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.note .meta { font-size: 14px; color: var(--lm-muted); display: flex; justify-content: space-between; gap: 8px; }
+.pend { display: inline-block; font-size: 13px; font-weight: 700; color: var(--lm-blue-deep); background: var(--lm-yellow); border-radius: 999px; padding: 2px 10px; margin-inline-start: 6px; }
+.empty { text-align: center; padding: 48px 0; font-size: 20px; color: var(--lm-ink); font-weight: 600; }
+.skeleton { column-width: 280px; column-gap: 20px; }
+.skeleton div { break-inside: avoid; background: #ffffff99; border-radius: var(--lm-radius); margin-bottom: 20px; height: 180px; }
+.skeleton div:nth-child(2n) { height: 260px; }
+
+/* חלונות */
+dialog { border: 0; border-radius: var(--lm-radius-lg); padding: 0; width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 24px); box-shadow: 0 20px 60px rgba(0,0,0,.3); font-family: var(--lm-font); color: var(--lm-body); }
+dialog::backdrop { background: rgba(11,79,124,.55); }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 22px 26px 8px; }
+.dlg-head h2 { font-size: 28px; }
+.x { background: none; border: 0; font-size: 30px; line-height: 1; color: var(--lm-ink); cursor: pointer; padding: 4px 10px; border-radius: var(--lm-radius); }
+form { padding: 8px 26px 26px; }
+.f { margin-bottom: 16px; }
+.f label { display: block; font-weight: 700; color: var(--lm-ink); font-size: 16px; margin-bottom: 4px; }
+.f small { color: var(--lm-muted); font-weight: 400; }
+input[type=text], textarea, select { width: 100%; font: 400 18px var(--lm-font); color: var(--lm-ink); padding: 11px 14px; border: 2px solid var(--lm-border); border-radius: var(--lm-radius); background: #fff; }
+textarea { min-height: 110px; resize: vertical; }
+.cnt { text-align: left; font-size: 13px; color: var(--lm-muted); }
+.hp { position: absolute; right: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.preview { display: none; margin-top: 10px; }
+.preview img { display: block; max-width: 100%; max-height: 220px; border-radius: var(--lm-radius); border: 1px solid var(--lm-border); }
+.preview button { margin-top: 8px; }
+.consent { display: flex !important; gap: 10px; align-items: flex-start; font-size: 16px; line-height: 1.5; font-weight: 400 !important; }
+.consent input { width: 22px; height: 22px; margin-top: 2px; flex: none; accent-color: var(--lm-blue-deep); }
+.err { color: #9B1C1C; font-weight: 700; font-size: 15px; min-height: 1.2em; margin: 6px 0 0; }
+.dlg-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 8px; }
+#viewer { width: min(1000px, calc(100vw - 24px)); background: transparent; box-shadow: none; }
+#viewer img { display: block; max-width: 100%; max-height: calc(100vh - 100px); margin: 0 auto; border-radius: var(--lm-radius); }
+#viewer .x { color: #fff; position: absolute; top: 0; left: 0; font-size: 36px; background: rgba(11,79,124,.8); }
+[hidden] { display: none !important; }
+.msg { font-size: 20px; max-width: 640px; margin-top: 16px; }
+
+@media (max-width: 640px) {
+  body { font-size: 17px; }
+  main { padding: 24px 0 48px; }
+  .head .lm-btn, .dlg-actions .lm-btn { width: 100%; text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <span class="brand">
+      <img src="assets/lomdot-logo-no-tagline.png" alt="לומדות" onerror="this.style.display='none'">
+      <span id="brandName">לוח שיתופי</span>
+    </span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="noBoard" hidden>
+    <h1>צריך קישור ללוח</h1>
+    <p class="msg">כדי להיכנס ללוח צריך את הקישור המלא שנשלח אליכם. בקשו אותו ממי שהזמינה אתכם.</p>
+  </section>
+
+  <section id="boardView" hidden>
+    <div class="head">
+      <h1 id="boardTitle"></h1>
+      <button class="lm-btn" id="openAdd" type="button">הוספת כרטיסייה</button>
+    </div>
+    <div class="tools">
+      <button class="lm-btn lm-btn--ghost" id="copyLink" type="button">העתקת קישור ללוח</button>
+    </div>
+    <div class="filters" id="filters" role="group" aria-label="סינון לפי קטגוריה"></div>
+    <p class="status" id="status" aria-live="polite"></p>
+    <div id="board" class="masonry"></div>
+  </section>
+
+</main>
+
+<!-- הוספת כרטיסייה -->
+<dialog id="addDlg" aria-labelledby="addTitle">
+  <div class="dlg-head">
+    <h2 id="addTitle">הוספת כרטיסייה</h2>
+    <button class="x" type="button" id="closeAdd" aria-label="סגירה">&times;</button>
+  </div>
+  <form id="addForm" novalidate autocomplete="off">
+    <div class="f">
+      <label for="fTitle">כותרת</label>
+      <input type="text" id="fTitle" maxlength="80" required>
+    </div>
+    <div class="f">
+      <label for="fText">טקסט <small>(אופציונלי)</small></label>
+      <textarea id="fText" maxlength="600"></textarea>
+      <div class="cnt"><span id="cntText">0</span> / 600</div>
+    </div>
+    <div class="f">
+      <label for="fImg">תמונה <small>(אופציונלי, תיקטן אוטומטית)</small></label>
+      <input type="file" id="fImg" accept="image/jpeg,image/png,image/webp">
+      <div class="preview" id="preview">
+        <img id="previewImg" alt="תצוגה מקדימה של התמונה שנבחרה">
+        <button type="button" class="lm-btn lm-btn--ghost" id="clearImg">הסרת התמונה</button>
+      </div>
+    </div>
+    <div class="f">
+      <label for="fCat">קטגוריה</label>
+      <select id="fCat"></select>
+    </div>
+    <div class="f">
+      <label for="fName">שם</label>
+      <input type="text" id="fName" maxlength="40" required>
+    </div>
+    <div class="hp" aria-hidden="true">
+      <label for="fWebsite">אל תמלאו שדה זה</label>
+      <input type="text" id="fWebsite" tabindex="-1" autocomplete="off">
+    </div>
+    <div class="f">
+      <label class="consent" for="fConsent">
+        <input type="checkbox" id="fConsent">
+        <span>אני מסכימה או מסכים שהכרטיסייה, השם והתמונה (אם צירפתי) יוצגו בלוח לכל מי שנכנס אליו.</span>
+      </label>
+    </div>
+    <p class="err" id="err" role="alert"></p>
+    <div class="dlg-actions">
+      <button class="lm-btn" type="submit" id="sendBtn">שליחה ללוח</button>
+      <button class="lm-btn lm-btn--ghost" type="button" id="cancelAdd">ביטול</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="viewer" aria-label="תמונה מוגדלת">
+  <button class="x" type="button" id="closeViewer" aria-label="סגירה">&times;</button>
+  <img id="viewerImg" alt="">
+</dialog>
+
+<script>
+/* ===== הגדרות ===== */
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzt3KL8K8pD8dxyxY7pzyCspgsKheg0BULwyHE_PT_YADyqazEUPPk-0Q3JTgyl8t5r/exec';
+const AUTO_APPROVE = false;          // חייב להתאים ל-Code.gs
+const CATEGORIES = ['רעיון', 'פוסטר', 'שאלה', 'טיפ', 'אחר'];   // חייב להתאים ל-Code.gs
+const BOARD = (new URLSearchParams(location.search).get('board') || '').trim().slice(0, 30);
+const LIMITS = { maxDim: 1200, maxBytes: 1400000 };
+
+const $ = id => document.getElementById(id);
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function fmtDate(s) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? `${m[3]}.${m[2]}.${m[1]}` : (s || ''); }
+function safeImg(u) {
+  if (!u) return '';
+  if (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(u)) return u;
+  try { const url = new URL(u); if (url.protocol === 'https:' && /(^|\.)(drive\.google\.com|googleusercontent\.com)$/.test(url.hostname)) return url.href; } catch (e) {}
+  return '';
+}
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k) || ''; localStorage.setItem(k, v); } catch (e) { return ''; } }
+
+/* קריאה מהגיליון (JSONP) */
+function jsonp(params) {
+  return new Promise((resolve, reject) => {
+    const cb = 'lmcb' + Date.now() + Math.floor(Math.random() * 1000);
+    const s = document.createElement('script');
+    const timer = setTimeout(() => { done(); reject(new Error('timeout')); }, 20000);
+    function done() { clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = data => { done(); data && data.ok ? resolve(data) : reject(new Error('bad')); };
+    s.onerror = () => { done(); reject(new Error('net')); };
+    const q = Object.entries(Object.assign({ callback: cb, t: Date.now() }, params)).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+    s.src = SCRIPT_URL + '?' + q;
+    document.body.appendChild(s);
+  });
+}
+
+/* ===== הלוח ===== */
+let posts = [], local = [], activeCat = 'הכול';
+
+function renderFilters() {
+  const box = $('filters'); box.textContent = '';
+  ['הכול', ...CATEGORIES].forEach(c => {
+    const b = el('button', 'chip', c); b.type = 'button'; b.setAttribute('aria-pressed', String(c === activeCat));
+    b.addEventListener('click', () => { activeCat = c; renderFilters(); renderBoard(); });
+    box.appendChild(b);
+  });
+}
+function renderBoard() {
+  const all = [...local, ...posts];
+  const list = activeCat === 'הכול' ? all : all.filter(p => p.category === activeCat);
+  const board = $('board'); board.textContent = ''; board.className = 'masonry';
+  list.forEach(p => {
+    const card = el('article', 'note' + (p.pending ? ' pending' : '')); card.dataset.c = Math.max(0, CATEGORIES.indexOf(p.category));
+    const img = safeImg(p.image);
+    if (img) {
+      const b = el('button', 'img'); b.type = 'button'; b.setAttribute('aria-label', 'הגדלת התמונה: ' + p.title);
+      const i = document.createElement('img'); i.src = img; i.alt = p.title; i.loading = 'lazy'; i.referrerPolicy = 'no-referrer';
+      b.appendChild(i); b.addEventListener('click', () => { $('viewerImg').src = img; $('viewerImg').alt = p.title; $('viewer').showModal(); }); card.appendChild(b);
+    }
+    const body = el('div', 'body'); body.appendChild(el('span', 'lm-tag', p.category || 'אחר'));
+    if (p.pending) body.appendChild(el('span', 'pend', 'ממתינה לאישור'));
+    body.appendChild(el('h3', null, p.title));
+    if (p.text) body.appendChild(el('p', null, p.text));
+    const meta = el('div', 'meta'); meta.appendChild(el('span', null, p.name)); meta.appendChild(el('span', null, fmtDate(p.date)));
+    body.appendChild(meta); card.appendChild(body); board.appendChild(card);
+  });
+  const st = $('status');
+  if (!all.length) { board.className = ''; board.appendChild(el('p', 'empty', 'עדיין אין כרטיסיות בלוח. היו הראשונות והראשונים להוסיף.')); st.textContent = ''; }
+  else if (!list.length) { board.className = ''; board.appendChild(el('p', 'empty', 'אין עדיין כרטיסיות בקטגוריה הזו.')); st.textContent = ''; }
+  else st.textContent = `מוצגות ${list.length} כרטיסיות`;
+}
+async function showBoard() {
+  $('boardView').hidden = false;
+  $('boardTitle').textContent = BOARD; $('brandName').textContent = BOARD; document.title = BOARD + ' | לומדות';
+  renderFilters();
+  const b = $('board'); b.textContent = ''; b.className = 'skeleton';
+  for (let i = 0; i < 6; i++) b.appendChild(document.createElement('div'));
+  $('status').textContent = 'טוענים את הלוח...';
+  try {
+    const data = await jsonp({ board: BOARD });
+    if (data.exists === false) {
+      b.textContent = ''; b.className = '';
+      b.appendChild(el('p', 'empty', 'הלוח לא קיים או נסגר.'));
+      $('status').textContent = ''; $('openAdd').hidden = true; $('copyLink').hidden = true; $('filters').hidden = true; return;
+    }
+    posts = data.posts || []; renderBoard();
+  } catch (x) { posts = []; renderBoard(); $('status').textContent = 'לא הצלחנו לטעון את הלוח. נסו לרענן את הדף.'; }
+}
+
+/* ===== דחיסת תמונה ===== */
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, LIMITS.maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * k), h = Math.round(img.naturalHeight * k);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+      let q = 0.82, out = c.toDataURL('image/jpeg', q);
+      while (out.length * 0.75 > LIMITS.maxBytes && q > 0.35) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+      out.length * 0.75 > LIMITS.maxBytes ? reject(new Error('big')) : resolve(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad')); };
+    img.src = url;
+  });
+}
+
+/* ===== הוספת כרטיסייה ===== */
+const dlg = $('addDlg'), form = $('addForm');
+let imageData = '';
+function openAdd() { form.reset(); imageData = ''; $('preview').style.display = 'none'; $('err').textContent = ''; $('cntText').textContent = '0'; $('fName').value = store('lm_name'); dlg.showModal(); $('fTitle').focus(); }
+$('openAdd').addEventListener('click', openAdd);
+$('closeAdd').addEventListener('click', () => dlg.close());
+$('cancelAdd').addEventListener('click', () => dlg.close());
+$('closeViewer').addEventListener('click', () => $('viewer').close());
+$('viewer').addEventListener('click', e => { if (e.target === $('viewer')) $('viewer').close(); });
+$('fText').addEventListener('input', e => { $('cntText').textContent = e.target.value.length; });
+$('fImg').addEventListener('change', async e => {
+  const f = e.target.files[0]; $('err').textContent = '';
+  if (!f) return;
+  if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { $('err').textContent = 'אפשר להעלות תמונות מסוג JPG, PNG או WebP.'; e.target.value = ''; return; }
+  try { imageData = await compressImage(f); $('previewImg').src = imageData; $('preview').style.display = 'block'; }
+  catch (x) { imageData = ''; e.target.value = ''; $('preview').style.display = 'none'; $('err').textContent = 'התמונה גדולה מדי או לא נקראת. נסו תמונה אחרת.'; }
+});
+$('clearImg').addEventListener('click', () => { imageData = ''; $('fImg').value = ''; $('preview').style.display = 'none'; });
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = $('err'); err.textContent = '';
+  const title = $('fTitle').value.trim(), text = $('fText').value.trim(), name = $('fName').value.trim();
+  if (!title) { err.textContent = 'חסרה כותרת.'; $('fTitle').focus(); return; }
+  if (!name) { err.textContent = 'חסר שם.'; $('fName').focus(); return; }
+  if (!$('fConsent').checked) { err.textContent = 'כדי לשלוח צריך לסמן הסכמה להצגה בלוח.'; return; }
+  if ($('fWebsite').value) { dlg.close(); return; }   // מלכודת ספאם
+  const entry = { date: new Date().toISOString().slice(0, 10), name, title, text, image: imageData, category: $('fCat').value, pending: !AUTO_APPROVE };
+  const btn = $('sendBtn'); btn.disabled = true; btn.textContent = 'שולחים...';
+  try {
+    // no-cors: הדפדפן לא מאפשר לקרוא את התשובה, לכן הכרטיסייה מוצגת מיד
+    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ title, text, name, category: entry.category, board: BOARD, imageBase64: imageData, consent: true, website: '' }) });
+    store('lm_name', name);
+    local.unshift(entry); dlg.close(); renderBoard();
+    $('status').textContent = AUTO_APPROVE ? 'הכרטיסייה נשלחה ונשמרה בלוח.' : 'הכרטיסייה נשלחה. היא תוצג לכולן ולכולם אחרי אישור.';
+  } catch (x) { err.textContent = 'השליחה נכשלה. בדקו חיבור לאינטרנט ונסו שוב.'; }
+  finally { btn.disabled = false; btn.textContent = 'שליחה ללוח'; }
+});
+$('copyLink').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(location.href); $('status').textContent = 'הקישור ללוח הועתק.'; }
+  catch (x) { $('status').textContent = 'אפשר להעתיק את הקישור משורת הכתובת בדפדפן.'; }
+});
+
+/* ===== הפעלה ===== */
+CATEGORIES.forEach(c => { const o = document.createElement('option'); o.value = o.textContent = c; $('fCat').appendChild(o); });
+BOARD ? showBoard() : ($('noBoard').hidden = false);
+</script>
+</body>
+</html>
