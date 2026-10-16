@@ -79,6 +79,19 @@ main { padding: 36px 0 64px; }
 .note h3 { margin: 10px 0 6px; font-size: 21px; }
 .note p { margin: 0 0 12px; font-size: 17px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .note .meta { font-size: 14px; color: var(--lm-muted); display: flex; justify-content: space-between; gap: 8px; }
+.actions { display: flex; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--lm-border); }
+.act { font: 700 15px/1 var(--lm-font); background: var(--lm-white); color: var(--lm-blue-deep); border: 2px solid var(--lm-blue-deep); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+.act:hover { background: var(--lm-teal-soft); }
+.act[aria-pressed="true"] { background: var(--lm-blue-deep); color: #fff; }
+.act:focus-visible, .cform input:focus-visible, .cform textarea:focus-visible { outline: 3px solid var(--lm-blue-deep); outline-offset: 2px; }
+.cpanel { margin-top: 12px; }
+.cmt { font-size: 15px; line-height: 1.5; background: var(--lm-teal-soft); border-radius: var(--lm-radius); padding: 8px 12px; margin-bottom: 8px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.cmt b { color: var(--lm-ink); }
+.cmt.pending { outline: 2px dashed var(--lm-blue-deep); outline-offset: -2px; }
+.cform input, .cform textarea { width: 100%; font: 400 16px var(--lm-font); padding: 8px 10px; border: 2px solid var(--lm-border); border-radius: var(--lm-radius); margin-bottom: 8px; }
+.cform textarea { min-height: 64px; resize: vertical; }
+.cform small { display: block; color: var(--lm-muted); font-size: 13px; margin-bottom: 8px; }
+.cform .lm-btn { padding: 10px 18px; font-size: 16px; }
 .pend { display: inline-block; font-size: 13px; font-weight: 700; color: var(--lm-blue-deep); background: var(--lm-yellow); border-radius: 999px; padding: 2px 10px; margin-inline-start: 6px; }
 .empty { text-align: center; padding: 48px 0; font-size: 20px; color: var(--lm-ink); font-weight: 600; }
 .skeleton { column-width: 280px; column-gap: 20px; }
@@ -248,6 +261,7 @@ textarea { min-height: 110px; resize: vertical; }
    הדף עובד לכל גיליון: הכתובת קובעת לאיזה גיליון הוא מתחבר.
    קישור ללוח נראה כך:  ?s=מזהה-הפריסה&t=שם-הלוח */
 const AUTO_APPROVE = false;          // חייב להתאים ל-Code.gs
+const AUTO_APPROVE_COMMENTS = false; // חייב להתאים ל-Code.gs
 const CATEGORIES = ['רעיון', 'פוסטר', 'שאלה', 'טיפ', 'אחר'];   // חייב להתאים ל-Code.gs
 const LIMITS = { maxDim: 1200, maxBytes: 1400000 };
 const params = new URLSearchParams(location.search);
@@ -315,13 +329,76 @@ function renderBoard() {
     body.appendChild(el('h3', null, p.title));
     if (p.text) body.appendChild(el('p', null, p.text));
     const meta = el('div', 'meta'); meta.appendChild(el('span', null, p.name)); meta.appendChild(el('span', null, fmtDate(p.date)));
-    body.appendChild(meta); card.appendChild(body); board.appendChild(card);
+    body.appendChild(meta);
+    if (p.id) body.appendChild(buildActions(p));
+    card.appendChild(body); board.appendChild(card);
   });
   const st = $('status');
   if (!all.length) { board.className = ''; board.appendChild(el('p', 'empty', 'עדיין אין כרטיסיות בלוח. היו הראשונות והראשונים להוסיף.')); st.textContent = ''; }
   else if (!list.length) { board.className = ''; board.appendChild(el('p', 'empty', 'אין עדיין כרטיסיות בקטגוריה הזו.')); st.textContent = ''; }
   else st.textContent = `מוצגות ${list.length} כרטיסיות`;
 }
+/* ===== לייקים ותגובות ===== */
+function likedSet() { try { return new Set(JSON.parse(localStorage.getItem('lm_likes') || '[]')); } catch (e) { return new Set(); } }
+function saveLiked(set) { try { localStorage.setItem('lm_likes', JSON.stringify([...set].slice(-500))); } catch (e) {} }
+function sendAction(payload) {
+  return fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+}
+function buildActions(p) {
+  const wrap = el('div');
+  const row = el('div', 'actions');
+  const liked = likedSet();
+  p.likes = p.likes || 0;
+  const likeBtn = el('button', 'act'); likeBtn.type = 'button';
+  const paintLike = () => { likeBtn.textContent = 'אהבתי ' + p.likes; likeBtn.setAttribute('aria-pressed', String(liked.has(p.id))); };
+  paintLike();
+  likeBtn.addEventListener('click', async () => {
+    if (liked.has(p.id)) return;
+    liked.add(p.id); p.likes++; saveLiked(liked); paintLike();
+    try { await sendAction({ action: 'like', id: p.id, website: '' }); } catch (x) {}
+  });
+  const cmts = [...(p.comments || [])];
+  const cBtn = el('button', 'act'); cBtn.type = 'button'; cBtn.setAttribute('aria-expanded', 'false');
+  const paintC = () => { cBtn.textContent = 'תגובות ' + cmts.length; };
+  paintC();
+  row.appendChild(likeBtn); row.appendChild(cBtn); wrap.appendChild(row);
+
+  let panel = null;
+  cBtn.addEventListener('click', () => {
+    if (panel) { panel.hidden = !panel.hidden; cBtn.setAttribute('aria-expanded', String(!panel.hidden)); return; }
+    panel = el('div', 'cpanel');
+    const list = el('div');
+    const addCmt = (c, pending) => {
+      const d = el('div', 'cmt' + (pending ? ' pending' : ''));
+      d.appendChild(el('b', null, c.name)); d.appendChild(document.createTextNode(': ' + c.text + (pending ? ' (ממתינה לאישור)' : '')));
+      list.appendChild(d);
+    };
+    cmts.forEach(c => addCmt(c, false));
+    const f = el('form', 'cform'); f.noValidate = true;
+    const nm = el('input'); nm.type = 'text'; nm.maxLength = 40; nm.placeholder = 'שם'; nm.value = store('lm_name'); nm.setAttribute('aria-label', 'שם');
+    const tx = el('textarea'); tx.maxLength = 300; tx.placeholder = 'כתבו תגובה'; tx.setAttribute('aria-label', 'תגובה');
+    const note = el('small', null, 'התגובה והשם יוצגו בלוח לכל מי שנכנס אליו' + (AUTO_APPROVE_COMMENTS ? '.' : ', אחרי אישור.'));
+    const send = el('button', 'lm-btn', 'שליחת תגובה'); send.type = 'submit';
+    const msg = el('p', 'err'); msg.setAttribute('role', 'alert');
+    f.appendChild(nm); f.appendChild(tx); f.appendChild(note); f.appendChild(send); f.appendChild(msg);
+    f.addEventListener('submit', async e => {
+      e.preventDefault(); msg.textContent = '';
+      const name = nm.value.trim(), text = tx.value.trim();
+      if (!name || !text) { msg.textContent = 'כתבו שם ותגובה.'; return; }
+      send.disabled = true;
+      try {
+        await sendAction({ action: 'comment', id: p.id, name, text, website: '' });
+        store('lm_name', name);
+        addCmt({ name, text }, !AUTO_APPROVE_COMMENTS); cmts.push({ name, text }); paintC(); tx.value = '';
+      } catch (x) { msg.textContent = 'השליחה נכשלה. נסו שוב.'; }
+      finally { send.disabled = false; }
+    });
+    panel.appendChild(list); panel.appendChild(f); wrap.appendChild(panel);
+    cBtn.setAttribute('aria-expanded', 'true'); nm.focus();
+  });
+  return wrap;
+}
+
 async function showBoard() {
   $('boardView').hidden = false;
   $('boardTitle').textContent = TITLE; $('brandName').textContent = TITLE; document.title = TITLE + ' | לומדות';
