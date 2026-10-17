@@ -399,6 +399,39 @@ function buildActions(p) {
   return wrap;
 }
 
+/* ===== רענון אוטומטי =====
+   כל כמה שניות הדף בודק את הגיליון ומעדכן את הלוח, רק אם משהו השתנה,
+   ולא כשמישהו באמצע כתיבה (חלון פתוח, תגובה בכתיבה) או כשהלשונית מוסתרת. */
+const REFRESH_MS = 20000;
+let lastSig = '';
+const sigOf = list => list.map(p => [p.id, p.title, p.likes, (p.comments || []).length].join('~')).join('|');
+function userIsBusy() {
+  if (document.hidden) return true;
+  if (document.querySelector('dialog[open]')) return true;
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+  if ([...document.querySelectorAll('.cpanel')].some(x => !x.hidden)) return true;   // תגובות פתוחות
+  return false;
+}
+async function refreshBoard() {
+  if (userIsBusy()) return;
+  try {
+    const r = await fetch(SCRIPT_URL + '?t=' + Date.now());
+    const data = await r.json();
+    if (!data || !data.ok) return;
+    const fresh = (data.posts || []).filter(p => p && typeof p.title === 'string');
+    if (sigOf(fresh) === lastSig) return;
+    lastSig = sigOf(fresh); posts = fresh;
+    // כרטיסייה שנשלחה כאן והתאשרה בינתיים: מסירים את הגרסה הזמנית כדי שלא תוצג פעמיים
+    local = local.filter(l => !fresh.some(f => f.title === l.title && f.name === l.name));
+    renderBoard();
+  } catch (x) { /* בדיקה שקטה, מנסים שוב בסבב הבא */ }
+}
+function startAutoRefresh() {
+  setInterval(refreshBoard, REFRESH_MS);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshBoard(); });
+}
+
 async function showBoard() {
   $('boardView').hidden = false;
   $('boardTitle').textContent = TITLE; $('brandName').textContent = TITLE; document.title = TITLE + ' | לומדות';
@@ -411,7 +444,9 @@ async function showBoard() {
     const data = await r.json();
     if (!data || !data.ok) throw new Error('bad');
     posts = (data.posts || []).filter(p => p && typeof p.title === 'string');
+    lastSig = sigOf(posts);
     renderBoard();
+    startAutoRefresh();
   } catch (x) { posts = []; renderBoard(); $('status').textContent = 'לא הצלחנו לטעון את הלוח. נסו לרענן את הדף.'; }
 }
 
